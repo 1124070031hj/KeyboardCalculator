@@ -2,11 +2,39 @@
 #include "ui_mainwindow.h"
 #include <QGridLayout>
 #include <QPushButton>
+#include <QJSEngine>
+#include <QRegularExpression>
+#include <cmath>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    connect(ui->btnEqual, &QPushButton::clicked,
+            this, &MainWindow::calculateResult);
+    // 加法
+    connect(ui->btnAdd, &QPushButton::clicked,
+            this, [this]() {
+                inputOperator("+");
+            });
+
+    // 减法
+    connect(ui->btnSubtract, &QPushButton::clicked,
+            this, [this]() {
+                inputOperator("-");
+            });
+
+    // 乘法
+    connect(ui->btnMultiply, &QPushButton::clicked,
+            this, [this]() {
+                inputOperator("×");
+            });
+
+    // 除法
+    connect(ui->btnDivide, &QPushButton::clicked,
+            this, [this]() {
+                inputOperator("÷");
+            });
     // 将10个数字按钮放进数组
     QPushButton *digitButtons[10] = {
         ui->btn0,
@@ -59,13 +87,10 @@ MainWindow::~MainWindow()
 }
 void MainWindow::inputDigit(int digit)
 {
-    // 1. 获取当前显示的字符串
     QString current = ui->displayEdit->text();
 
-    // 2. 把数字转换为字符串
     QString number = QString::number(digit);
 
-    // 3. 判断是否为初始状态
     if (current == "0") {
         ui->displayEdit->setText(number);
     }
@@ -73,15 +98,96 @@ void MainWindow::inputDigit(int digit)
         ui->displayEdit->setText(current + number);
     }
 }
+void MainWindow::inputOperator(const QString &op)
+{
+    QString current = ui->displayEdit->text();
+
+    // 1. 如果输入框为空，不允许直接输入运算符
+    if (current.isEmpty()) {
+        return;
+    }
+
+    // 2. 定义允许的四种运算符
+    QString operators = "+-×÷";
+
+    // 3. 检查最后一个字符是不是运算符
+    QString last = current.right(1);
+
+    if (operators.contains(last)) {
+        return;
+    }
+
+    // 4. 拼接运算符
+    ui->displayEdit->setText(current + op);
+}
 void MainWindow::inputDot()
 {
     QString current = ui->displayEdit->text();
 
-    // 如果已经存在小数点，不再添加
-    if (current.contains(".")) {
+    // 获取四则运算符的位置
+    QString operators = "+-×÷";
+    int lastOperatorIndex = -1;
+
+    for (int i = 0; i < current.length(); i++) {
+        if (operators.contains(current.at(i))) {
+            lastOperatorIndex = i;
+        }
+    }
+
+    // 提取最后一个运算符后面的数字
+    QString currentNumber = current.mid(lastOperatorIndex + 1);
+
+    // 如果当前数字已有小数点，直接返回
+    if (currentNumber.contains(".")) {
         return;
     }
 
-    // 添加小数点
-    ui->displayEdit->setText(current + ".");
+    // 如果刚输入完运算符，先补0
+    if (currentNumber.isEmpty()) {
+        ui->displayEdit->setText(current + "0.");
+    }
+    else {
+        ui->displayEdit->setText(current + ".");
+    }
+
+}void MainWindow::calculateResult()
+{
+    // 1. 获取显示框里的表达式
+    QString expression = ui->displayEdit->text();
+
+    // 2. 检查表达式是否合法
+    QRegularExpression pattern(
+        R"(^\d+(?:\.\d*)?(?:[+\-×÷]\d+(?:\.\d*)?)*$)"
+        );
+
+    if (!pattern.match(expression).hasMatch()) {
+        ui->displayEdit->setText("错误");
+        return;
+    }
+
+    // 3. 转换运算符
+    expression.replace("×", "*");
+    expression.replace("÷", "/");
+
+    // 4. 创建 JavaScript 引擎
+    QJSEngine engine;
+
+    // 5. 计算表达式
+    QJSValue result = engine.evaluate(expression);
+
+    // 6. 检查是否发生计算错误
+    if (result.isError() ||
+        !result.isNumber() ||
+        !std::isfinite(result.toNumber())) {
+
+        ui->displayEdit->setText("错误");
+        return;
+    }
+
+    // 7. 显示计算结果
+    double number = result.toNumber();
+
+    ui->displayEdit->setText(
+        QString::number(number, 'g', 15)
+        );
 }

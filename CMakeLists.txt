@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.19)
 project(KeyboardCalculator LANGUAGES CXX)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Qml)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Qml)
 
 qt_standard_project_setup()
 
@@ -17,6 +18,7 @@ target_link_libraries(KeyboardCalculator
     PRIVATE
         Qt::Core
         Qt::Widgets
+        Qt::Qml
 )
 
 install(TARGETS KeyboardCalculator

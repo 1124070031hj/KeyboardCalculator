@@ -1,6 +1,6 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-
+#include <QString>
 #include <QMainWindow>
 
 QT_BEGIN_NAMESPACE
@@ -21,5 +21,8 @@ private:
     Ui::MainWindow *ui;
     void inputDigit(int digit);
     void inputDot();
+    void inputOperator(const QString &op);
+    void calculateResult();
+
 };
 #endif // MAINWINDOW_H
