@@ -19,5 +19,7 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    void inputDigit(int digit);
+    void inputDot();
 };
 #endif // MAINWINDOW_H
