@@ -1,0 +1,5 @@
+build/
+.qtcreator/
+cmake-build-*/
+CMakeLists.txt.user*
+CMakeUserPresets.json
