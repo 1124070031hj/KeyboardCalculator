@@ -23,6 +23,6 @@ private:
     void inputDot();
     void inputOperator(const QString &op);
     void calculateResult();
-
+    void updatePreview();
 };
 #endif // MAINWINDOW_H

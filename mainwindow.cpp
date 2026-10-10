@@ -10,6 +10,8 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    connect(ui->displayEdit, &QLineEdit::textChanged,
+            this, &MainWindow::updatePreview);
     connect(ui->btnEqual, &QPushButton::clicked,
             this, &MainWindow::calculateResult);
     // 加法
@@ -189,5 +191,42 @@ void MainWindow::inputDot()
 
     ui->displayEdit->setText(
         QString::number(number, 'g', 15)
+        );
+}
+void MainWindow::updatePreview()
+{
+    // 1. 获取当前表达式
+    QString expression = ui->displayEdit->text();
+
+    // 2. 检查表达式是否完整、合法
+    QRegularExpression pattern(
+        R"(^\d+(?:\.\d*)?(?:[+\-×÷]\d+(?:\.\d*)?)*$)"
+        );
+
+    if (!pattern.match(expression).hasMatch()) {
+        ui->previewLabel->clear();
+        return;
+    }
+
+    // 3. 转换乘除运算符
+    expression.replace("×", "*");
+    expression.replace("÷", "/");
+
+    // 4. 计算表达式
+    QJSEngine engine;
+    QJSValue result = engine.evaluate(expression);
+
+    // 5. 排除错误及无穷大
+    if (result.isError() ||
+        !result.isNumber() ||
+        !std::isfinite(result.toNumber())) {
+
+        ui->previewLabel->clear();
+        return;
+    }
+
+    // 6. 在灰色 QLabel 显示答案
+    ui->previewLabel->setText(
+        QString::number(result.toNumber(), 'g', 15)
         );
 }
