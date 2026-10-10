@@ -24,5 +24,7 @@ private:
     void inputOperator(const QString &op);
     void calculateResult();
     void updatePreview();
+    bool evaluateExpression(const QString &expression,
+                            double &number);
 };
 #endif // MAINWINDOW_H

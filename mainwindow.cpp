@@ -93,7 +93,7 @@ void MainWindow::inputDigit(int digit)
 
     QString number = QString::number(digit);
 
-    if (current == "0") {
+   if (current == "0" || current == "错误") {
         ui->displayEdit->setText(number);
     }
     else {
@@ -104,23 +104,48 @@ void MainWindow::inputOperator(const QString &op)
 {
     QString current = ui->displayEdit->text();
 
-    // 1. 如果输入框为空，不允许直接输入运算符
-    if (current.isEmpty()) {
+    // 1. 允许以负号开头
+    if (current.isEmpty() || current == "0" ||
+        current == "错误") {
+
+        if (op == "-") {
+            ui->displayEdit->setText("-");
+        }
+        else if (current == "0") {
+            ui->displayEdit->setText(current + op);
+        }
+
         return;
     }
 
-    // 2. 定义允许的四种运算符
+    // 2. 获取最后一个字符
     QString operators = "+-×÷";
-
-    // 3. 检查最后一个字符是不是运算符
     QString last = current.right(1);
 
-    if (operators.contains(last)) {
+    // 3. 最后不是运算符，可以正常追加
+    if (!operators.contains(last)) {
+        ui->displayEdit->setText(current + op);
         return;
     }
 
-    // 4. 拼接运算符
-    ui->displayEdit->setText(current + op);
+    // 4. 如果输入的是负号
+    if (op == "-") {
+
+        // 前面是 +、×、÷，可以追加负号
+        if (last == "+" || last == "×" || last == "÷") {
+            ui->displayEdit->setText(current + "-");
+            return;
+        }
+
+        // 前面是减号，判断它是否是二元减法
+        if (last == "-" && current.length() >= 2) {
+            QChar before = current.at(current.length() - 2);
+
+            if (before.isDigit() || before == '.') {
+                ui->displayEdit->setText(current + "-");
+            }
+        }
+    }
 }
 void MainWindow::inputDot()
 {
@@ -145,88 +170,80 @@ void MainWindow::inputDot()
     }
 
     // 如果刚输入完运算符，先补0
-    if (currentNumber.isEmpty()) {
-        ui->displayEdit->setText(current + "0.");
+    if (current == "错误" || current.isEmpty()) {
+        ui->displayEdit->setText("0.");
+        return;
     }
     else {
         ui->displayEdit->setText(current + ".");
     }
 
-}void MainWindow::calculateResult()
+}
+void MainWindow::calculateResult()
 {
-    // 1. 获取显示框里的表达式
     QString expression = ui->displayEdit->text();
 
-    // 2. 检查表达式是否合法
-    QRegularExpression pattern(
-        R"(^\d+(?:\.\d*)?(?:[+\-×÷]\d+(?:\.\d*)?)*$)"
-        );
+    double number = 0;
 
-    if (!pattern.match(expression).hasMatch()) {
+    if (!evaluateExpression(expression, number)) {
         ui->displayEdit->setText("错误");
+        ui->previewLabel->clear();
         return;
     }
-
-    // 3. 转换运算符
-    expression.replace("×", "*");
-    expression.replace("÷", "/");
-
-    // 4. 创建 JavaScript 引擎
-    QJSEngine engine;
-
-    // 5. 计算表达式
-    QJSValue result = engine.evaluate(expression);
-
-    // 6. 检查是否发生计算错误
-    if (result.isError() ||
-        !result.isNumber() ||
-        !std::isfinite(result.toNumber())) {
-
-        ui->displayEdit->setText("错误");
-        return;
-    }
-
-    // 7. 显示计算结果
-    double number = result.toNumber();
 
     ui->displayEdit->setText(
         QString::number(number, 'g', 15)
         );
+
+    ui->previewLabel->clear();
 }
 void MainWindow::updatePreview()
 {
-    // 1. 获取当前表达式
     QString expression = ui->displayEdit->text();
 
-    // 2. 检查表达式是否完整、合法
+    double number = 0;
+
+    if (!evaluateExpression(expression, number)) {
+        ui->previewLabel->clear();
+        return;
+    }
+
+    ui->previewLabel->setText(
+        QString::number(number, 'g', 15)
+        );
+}
+bool MainWindow::evaluateExpression(
+    const QString &expression, double &number)
+{
+    // 允许负数参与运算
     QRegularExpression pattern(
-        R"(^\d+(?:\.\d*)?(?:[+\-×÷]\d+(?:\.\d*)?)*$)"
+        R"(^-?\d+(?:\.\d*)?(?:[+\-×÷]-?\d+(?:\.\d*)?)*$)"
         );
 
     if (!pattern.match(expression).hasMatch()) {
-        ui->previewLabel->clear();
-        return;
+        return false;
     }
 
-    // 3. 转换乘除运算符
-    expression.replace("×", "*");
-    expression.replace("÷", "/");
+    // 转成 JavaScript 能识别的运算符
+    QString jsExpression = expression;
 
-    // 4. 计算表达式
+    jsExpression.replace("×", "*");
+    jsExpression.replace("÷", "/");
+
+    // 例如 5--3 转成 5- -3
+    // 防止 JavaScript 将 -- 识别为自减运算符
+    jsExpression.replace("--", "- -");
+
     QJSEngine engine;
-    QJSValue result = engine.evaluate(expression);
+    QJSValue result = engine.evaluate(jsExpression);
 
-    // 5. 排除错误及无穷大
     if (result.isError() ||
         !result.isNumber() ||
         !std::isfinite(result.toNumber())) {
-
-        ui->previewLabel->clear();
-        return;
+        return false;
     }
 
-    // 6. 在灰色 QLabel 显示答案
-    ui->previewLabel->setText(
-        QString::number(result.toNumber(), 'g', 15)
-        );
+    number = result.toNumber();
+
+    return true;
 }
