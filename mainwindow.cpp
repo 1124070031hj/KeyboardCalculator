@@ -5,11 +5,33 @@
 #include <QJSEngine>
 #include <QRegularExpression>
 #include <cmath>
+#include <QKeyEvent>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    // 让主窗口能够接收键盘事件
+    setFocusPolicy(Qt::StrongFocus);
+
+    // 显示框只负责显示，不直接编辑文本
+    ui->displayEdit->setReadOnly(true);
+    ui->displayEdit->setFocusPolicy(Qt::NoFocus);
+
+    // 按钮不抢夺键盘焦点
+    QPushButton *allButtons[] = {
+        ui->btn0, ui->btn1, ui->btn2, ui->btn3, ui->btn4,
+        ui->btn5, ui->btn6, ui->btn7, ui->btn8, ui->btn9,
+        ui->btnDot, ui->btnClear, ui->btnBackspace,
+        ui->btnAdd, ui->btnSubtract,
+        ui->btnMultiply, ui->btnDivide, ui->btnEqual
+    };
+
+    for (QPushButton *button : allButtons) {
+        button->setFocusPolicy(Qt::NoFocus);
+    }
+
+    setFocus();
     connect(ui->displayEdit, &QLineEdit::textChanged,
             this, &MainWindow::updatePreview);
     connect(ui->btnEqual, &QPushButton::clicked,
@@ -87,6 +109,66 @@ MainWindow::~MainWindow()
 {
     delete ui;
 }
+
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+    QString text = event->text();
+
+    // 1. 数字键：调用对应的数字按钮
+    if (text.size() == 1 && text.at(0).isDigit()) {
+        bool ok = false;
+        int digit = text.toInt(&ok);
+
+        if (ok && digit >= 0 && digit <= 9) {
+            QPushButton *digitButtons[10] = {
+                ui->btn0, ui->btn1, ui->btn2, ui->btn3,
+                ui->btn4, ui->btn5, ui->btn6, ui->btn7,
+                ui->btn8, ui->btn9
+            };
+
+            digitButtons[digit]->click();
+            event->accept();
+            return;
+        }
+    }
+
+    // 2. 运算符：复用原来的按钮逻辑
+    if (text == "+") {
+        ui->btnAdd->click();
+    }
+    else if (text == "-") {
+        ui->btnSubtract->click();
+    }
+    else if (text == "*") {
+        ui->btnMultiply->click();
+    }
+    else if (text == "/") {
+        ui->btnDivide->click();
+    }
+    else if (text == ".") {
+        ui->btnDot->click();
+    }
+    // 3. 回车：计算结果
+    else if (event->key() == Qt::Key_Return ||
+             event->key() == Qt::Key_Enter) {
+        ui->btnEqual->click();
+    }
+    // 4. 退格
+    else if (event->key() == Qt::Key_Backspace) {
+        ui->btnBackspace->click();
+    }
+    // 5. Esc：清除
+    else if (event->key() == Qt::Key_Escape) {
+        ui->btnClear->click();
+    }
+    else {
+        QMainWindow::keyPressEvent(event);
+        return;
+    }
+
+    event->accept();
+}
+
 void MainWindow::inputDigit(int digit)
 {
     QString current = ui->displayEdit->text();

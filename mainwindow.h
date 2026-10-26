@@ -8,7 +8,7 @@ namespace Ui {
 class MainWindow;
 }
 QT_END_NAMESPACE
-
+class QKeyEvent;
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -16,7 +16,8 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
-
+protected:
+    void keyPressEvent(QKeyEvent *event) override;
 private:
     Ui::MainWindow *ui;
     void inputDigit(int digit);
